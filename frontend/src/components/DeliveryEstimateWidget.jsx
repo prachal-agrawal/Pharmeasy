@@ -237,8 +237,10 @@ export default function DeliveryEstimateWidget({ pin: pinProp, compact = false, 
               </span>
             )}
             <span>
-              COD:{' '}
-              <span className="font-medium text-green-700">Available</span>
+              Payment:{' '}
+              <span className={result.cod_available ? 'font-medium text-green-700' : 'font-medium text-gray-700'}>
+                {result.cod_available ? 'COD available' : 'Online only (Razorpay)'}
+              </span>
             </span>
           </div>
 

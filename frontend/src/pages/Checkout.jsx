@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { MapPin, CreditCard, CheckCircle, Plus, Smartphone, Banknote, Building2, FileText, Upload, X, ImagePlus, Truck } from 'lucide-react'
+import { MapPin, CreditCard, CheckCircle, Plus, FileText, Upload, X, ImagePlus, Truck } from 'lucide-react'
 import { addressesAPI, ordersAPI } from '../utils/api'
 import DeliveryEstimateWidget from '../components/DeliveryEstimateWidget'
 import { initiateRazorpayPayment } from '../utils/razorpay'
@@ -12,20 +12,16 @@ const STEPS = ['Address', 'Payment', 'Review']
 
 export default function Checkout() {
   const navigate = useNavigate()
-  const { items, totals, clearCart } = useCart()
+  const { items, totals, clearCart, loading: cartLoading } = useCart()
+  const { subtotal: cartSubtotal, canCheckout } = totals
   const { user } = useAuth()
 
   const [step,      setStep]      = useState(0)
   const [addresses, setAddresses] = useState([])
   const [selAddr,   setSelAddr]   = useState(null)
-  const [selPay,    setSelPay]    = useState('upi')
   const [placing,   setPlacing]   = useState(false)
   const [showForm,  setShowForm]  = useState(false)
   const [success,   setSuccess]   = useState(null)
-
-  // Card form state
-  const [card, setCard] = useState({ number: '', name: '', expiry: '', cvv: '' })
-  const [upiId, setUpiId] = useState('')
 
   // New address form
   const [newAddr, setNewAddr] = useState({ label:'Home', name:'', phone:'', line1:'', line2:'', city:'', state:'Uttar Pradesh', pin:'' })
@@ -76,9 +72,18 @@ export default function Checkout() {
   }
 
   useEffect(() => {
-    if (!items.length) navigate('/cart')
+    if (cartLoading) return
+    if (!items.length) {
+      navigate('/cart')
+      return
+    }
+    if (!canCheckout || cartSubtotal < 500) {
+      toast.error('Minimum order value is ₹500')
+      navigate('/cart')
+      return
+    }
     fetchAddresses()
-  }, [])
+  }, [cartLoading, items.length, canCheckout, cartSubtotal, navigate])
 
   const fetchAddresses = async () => {
     const { data } = await addressesAPI.list()
@@ -95,31 +100,14 @@ export default function Checkout() {
     toast.success('Address saved')
   }
 
-  // ── COD / NetBanking order ────────────────────────────────
-  const placeCodOrder = async (rxUrlList) => {
-    setPlacing(true)
-    try {
-      const { data } = await ordersAPI.place({
-        address_id:        selAddr.id,
-        payment_method:    selPay,
-        items:             items.map(i => ({ variant_id: i.variant_id, quantity: i.quantity })),
-        prescription_urls: rxUrlList?.length ? rxUrlList : null,
-      })
-      await clearCart()
-      setSuccess(data)
-    } catch (err) {
-      toast.error(err?.response?.data?.detail || 'Order failed')
-    } finally { setPlacing(false) }
-  }
-
-  // ── Razorpay payment ──────────────────────────────────────
+  // ── Razorpay only (UPI, cards, netbanking inside Razorpay checkout) ──
   const placeOnlineOrder = (rxUrlList) => {
     setPlacing(true)
     initiateRazorpayPayment({
       amount: totals.total,
       orderPayload: {
         address_id:        selAddr.id,
-        payment_method:    selPay,
+        payment_method:    'razorpay',
         items:             items.map(i => ({ variant_id: i.variant_id, quantity: i.quantity })),
         prescription_urls: rxUrlList?.length ? rxUrlList : null,
       },
@@ -151,8 +139,13 @@ export default function Checkout() {
       }
     }
 
-    if (selPay === 'cod' || selPay === 'netbanking') return placeCodOrder(finalUrls)
     placeOnlineOrder(finalUrls)
+  }
+
+  if (cartLoading) {
+    return (
+      <div className="max-w-5xl mx-auto px-4 py-16 text-center text-gray-500 text-sm">Loading checkout…</div>
+    )
   }
 
   // ── Success screen ────────────────────────────────────────
@@ -166,13 +159,8 @@ export default function Checkout() {
         <p className="text-gray-500 text-sm mb-1">Order <strong className="text-gray-700">{success.order_number}</strong></p>
         <p className="text-gray-500 text-sm mb-1">Estimated delivery: 3–5 business days to {selAddr?.city}</p>
         <div className="bg-gray-50 rounded-xl p-4 text-left mb-6">
-          <p className="text-xs text-gray-400 mb-1">
-            {selPay === 'cod' ? 'Amount to Pay on Delivery' : 'Amount Paid'}
-          </p>
+          <p className="text-xs text-gray-400 mb-1">Amount paid (Razorpay)</p>
           <p className="text-2xl font-extrabold text-brand">₹{parseFloat(success.total).toFixed(0)}</p>
-          {selPay === 'cod' && (
-            <p className="text-xs text-amber-600 mt-1 font-medium">💵 Keep cash ready at the time of delivery</p>
-          )}
         </div>
         <div className="flex gap-3">
           <button onClick={() => navigate('/orders')} className="flex-1 btn-primary">Track Order</button>
@@ -383,72 +371,24 @@ export default function Checkout() {
           {/* STEP 1 — PAYMENT */}
           {step === 1 && (
             <div className="space-y-3">
-              <h2 className="font-bold text-base flex items-center gap-2"><CreditCard className="w-4 h-4 text-brand" /> Payment Method</h2>
+              <h2 className="font-bold text-base flex items-center gap-2"><CreditCard className="w-4 h-4 text-brand" /> Payment</h2>
 
-              {[
-                { id:'upi',        icon: <Smartphone className="w-5 h-5 text-purple-600"/>, name:'UPI / QR Code',        sub:'GPay, PhonePe, Paytm, BHIM' },
-                { id:'card',       icon: <CreditCard  className="w-5 h-5 text-blue-600"/>,  name:'Credit / Debit Card',  sub:'Visa, Mastercard, RuPay' },
-                { id:'netbanking', icon: <Building2   className="w-5 h-5 text-indigo-600"/>, name:'Net Banking',          sub:'All major Indian banks' },
-                { id:'cod',        icon: <Banknote    className="w-5 h-5 text-green-600"/>,  name:'Cash on Delivery',     sub:'Pay when order arrives' },
-              ].map(p => (
-                <label key={p.id} className={`card p-4 flex items-center gap-3 cursor-pointer transition-all ${selPay===p.id ? 'border-brand ring-1 ring-brand' : ''}`}>
-                  <input type="radio" name="pay" checked={selPay===p.id} onChange={() => setSelPay(p.id)} className="accent-brand" />
-                  <div className="w-10 h-8 bg-gray-50 rounded-lg flex items-center justify-center shrink-0">{p.icon}</div>
+              <div className="card p-5 border-2 border-brand/20 bg-brand-light/20">
+                <div className="flex items-start gap-3">
+                  <div className="w-12 h-12 rounded-xl bg-white border border-gray-100 flex items-center justify-center shrink-0">
+                    <CreditCard className="w-6 h-6 text-brand" />
+                  </div>
                   <div>
-                    <p className="font-bold text-sm">{p.name}</p>
-                    <p className="text-xs text-gray-400">{p.sub}</p>
+                    <p className="font-bold text-gray-900">Pay with Razorpay</p>
+                    <p className="text-sm text-gray-600 mt-1">
+                      UPI, cards, net banking and wallets — all processed securely by Razorpay. Cash on delivery is not available.
+                    </p>
+                    <p className="text-xs text-gray-500 mt-2">
+                      Minimum order ₹500 · Delivery ₹69 (free on orders ₹2000+)
+                    </p>
                   </div>
-                </label>
-              ))}
-
-              {/* UPI field */}
-              {selPay === 'upi' && (
-                <div className="card p-4">
-                  <label className="text-xs font-bold text-gray-500 block mb-2">Enter UPI ID</label>
-                  <input className="input-field" value={upiId} onChange={e => setUpiId(e.target.value)} placeholder="yourname@okaxis" />
-                  <p className="text-[11px] text-gray-400 mt-1">The Razorpay popup will allow you to choose your UPI app</p>
                 </div>
-              )}
-
-              {/* Card form — preview */}
-              {selPay === 'card' && (
-                <div className="card p-4 space-y-3">
-                  {/* Visual card */}
-                  <div className="bg-gradient-to-br from-brand to-brand-mid rounded-xl p-4 text-white mb-3">
-                    <div className="flex justify-between items-center mb-4">
-                      <span className="text-xs opacity-70 font-medium">MathuraPharmeasy Pay</span>
-                      <span className="font-bold text-sm">VISA</span>
-                    </div>
-                    <p className="font-mono text-sm tracking-widest mb-3">{card.number || '•••• •••• •••• ••••'}</p>
-                    <div className="flex justify-between text-xs">
-                      <span>{card.expiry || 'MM/YY'}</span>
-                      <span className="uppercase font-medium">{card.name || 'CARD HOLDER'}</span>
-                    </div>
-                  </div>
-                  <input className="input-field" placeholder="Card number" maxLength={19}
-                    value={card.number}
-                    onChange={e => setCard(p => ({...p, number: e.target.value.replace(/\D/g,'').replace(/(.{4})/g,'$1 ').trim().slice(0,19)}))}
-                  />
-                  <input className="input-field" placeholder="Cardholder name" value={card.name}
-                    onChange={e => setCard(p => ({...p, name: e.target.value.toUpperCase()}))} />
-                  <div className="grid grid-cols-2 gap-3">
-                    <input className="input-field" placeholder="MM/YY" maxLength={5} value={card.expiry}
-                      onChange={e => setCard(p => ({...p, expiry: e.target.value}))} />
-                    <input className="input-field" placeholder="CVV" maxLength={3} type="password" value={card.cvv}
-                      onChange={e => setCard(p => ({...p, cvv: e.target.value}))} />
-                  </div>
-                  <p className="text-[11px] text-gray-400">Card details are handled securely by Razorpay. We never store your card.</p>
-                </div>
-              )}
-
-              {selPay === 'netbanking' && (
-                <div className="card p-4">
-                  <label className="text-xs font-bold text-gray-500 block mb-2">Select Bank</label>
-                  <select className="input-field">
-                    {['State Bank of India','HDFC Bank','ICICI Bank','Axis Bank','Kotak Mahindra Bank','Punjab National Bank','Bank of Baroda','Canara Bank'].map(b => <option key={b}>{b}</option>)}
-                  </select>
-                </div>
-              )}
+              </div>
 
               <div className="flex gap-3">
                 <button onClick={() => setStep(0)} className="btn-outline py-3 px-5">← Back</button>
@@ -490,7 +430,7 @@ export default function Checkout() {
 
               <div className="card p-4">
                 <p className="text-xs font-bold text-gray-400 uppercase mb-2">Payment</p>
-                <p className="text-sm font-medium capitalize">{selPay === 'cod' ? 'Cash on Delivery' : selPay === 'upi' ? 'UPI Payment' : selPay === 'card' ? 'Card Payment' : 'Net Banking'}</p>
+                <p className="text-sm font-medium">Razorpay (UPI / card / net banking)</p>
               </div>
 
               {rxRequired && (

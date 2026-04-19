@@ -51,7 +51,7 @@ async def delivery_eta_by_coords(
               "label": "Next-day delivery",
               "estimated_delivery_date": "17 Apr 2026",
               "message": "Next-day delivery to New Delhi, Delhi 🚚 — arrives by 17 Apr",
-              "cod_available": true
+              "cod_available": false
             }
 
     Example::

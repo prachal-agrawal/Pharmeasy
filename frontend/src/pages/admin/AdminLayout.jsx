@@ -18,7 +18,7 @@ export default function AdminLayout() {
       <aside className="w-56 bg-brand min-h-screen flex flex-col fixed left-0 top-0 z-40">
         <div className="p-5 border-b border-white/10">
           <div className="text-xl font-extrabold text-white tracking-tight">
-            Mathura<span className="opacity-60">Pharmeasy</span>
+            Bharat<span className="opacity-60">Medical</span>
           </div>
           <div className="text-xs text-white/50 mt-0.5">Admin Panel</div>
         </div>

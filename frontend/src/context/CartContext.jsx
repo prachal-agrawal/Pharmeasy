@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect, useCallback } from 'react'
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react'
 import { cartAPI } from '../utils/api'
 import { useAuth } from './AuthContext'
 import toast from 'react-hot-toast'
@@ -58,11 +58,27 @@ export function CartProvider({ children }) {
     try { await cartAPI.clear(); setItems([]) } catch { /* silent */ }
   }
 
+  /** ₹500 minimum cart (subtotal) to checkout; delivery free at ≥₹2000 else ₹69 */
+  const MIN_ORDER_SUBTOTAL = 500
+  const FREE_DELIVERY_SUBTOTAL = 2000
+  const DELIVERY_FEE = 69
+
   const totals = (() => {
     const subtotal = items.reduce((s, i) => s + parseFloat(i.price) * i.quantity, 0)
-    const delivery = subtotal >= 500 ? 0 : 49
+    const delivery = subtotal >= FREE_DELIVERY_SUBTOTAL ? 0 : DELIVERY_FEE
     const discount = subtotal >= 1000 ? Math.round(subtotal * 0.05) : 0
-    return { subtotal, delivery, discount, total: subtotal + delivery - discount }
+    const total = subtotal + delivery - discount
+    const canCheckout = subtotal >= MIN_ORDER_SUBTOTAL
+    const amountToFreeDelivery = Math.max(0, FREE_DELIVERY_SUBTOTAL - subtotal)
+    return {
+      subtotal,
+      delivery,
+      discount,
+      total,
+      canCheckout,
+      minOrderSubtotal: MIN_ORDER_SUBTOTAL,
+      amountToFreeDelivery,
+    }
   })()
 
   const count = items.reduce((s, i) => s + i.quantity, 0)

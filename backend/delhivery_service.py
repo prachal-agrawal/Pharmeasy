@@ -116,7 +116,7 @@ class DeliveryEstimate:
         label: Short window label e.g. "Next-day delivery".
         estimated_delivery_date: Formatted earliest delivery date string.
         message: Full human-readable message for display in the UI.
-        cod_available: Always True for domestic India (no restrictions).
+        cod_available: False — this store accepts online payment only (Razorpay).
     """
 
     city:                    str
@@ -128,7 +128,7 @@ class DeliveryEstimate:
     label:                   str
     estimated_delivery_date: str
     message:                 str
-    cod_available:           bool = True
+    cod_available:           bool = False
 
 
 # ── Nominatim helpers ─────────────────────────────────────────────────────────
@@ -252,7 +252,7 @@ async def estimate_by_coordinates(lat: float, lng: float) -> DeliveryEstimate:
         label=label,
         estimated_delivery_date=eta_date.strftime("%d %b %Y"),
         message=msg,
-        cod_available=True,
+        cod_available=False,
     )
 
 
@@ -290,7 +290,7 @@ async def estimate_by_pin(pin: str) -> DeliveryEstimate:
             label="3–5 day delivery",
             estimated_delivery_date=eta.strftime("%d %b %Y"),
             message=f"Delivery in 3–5 days — arrives by {eta.strftime('%d %b')} 🚚",
-            cod_available=True,
+            cod_available=False,
         )
 
     dest_lat, dest_lng, addr = result

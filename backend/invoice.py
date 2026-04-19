@@ -86,7 +86,7 @@ def generate_invoice_pdf(order_id: int, invoice_number: str, enriched: list, met
 
         # ── Address + Payment ────────────────────────────────
         addr = meta.get("addr") or {}
-        pay_map = {"upi":"UPI Payment","card":"Card Payment","cod":"Cash on Delivery","netbanking":"Net Banking"}
+        pay_map = {"upi":"UPI Payment","card":"Card Payment","cod":"Cash on Delivery","netbanking":"Net Banking","razorpay":"Razorpay"}
 
         # Determine human-readable payment status label
         payment_method = meta.get("payment_method", "")

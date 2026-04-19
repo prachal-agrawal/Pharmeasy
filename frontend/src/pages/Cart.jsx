@@ -6,6 +6,7 @@ import { useAuth } from '../context/AuthContext'
 
 export default function Cart() {
   const { items, totals, updateQty, removeItem, loading } = useCart()
+  const { canCheckout, minOrderSubtotal, amountToFreeDelivery } = totals
   const { user } = useAuth()
   const navigate = useNavigate()
 
@@ -91,9 +92,19 @@ export default function Cart() {
             </div>
           </div>
 
-          {totals.delivery > 0 && (
-            <p className="text-[11px] text-gray-400 mt-2 bg-gray-50 rounded-lg p-2 text-center">
-              Add ₹{(500 - totals.subtotal).toFixed(0)} more for free delivery
+          {!canCheckout && (
+            <p className="text-[11px] text-amber-800 mt-2 bg-amber-50 border border-amber-100 rounded-lg p-2 text-center font-medium">
+              Minimum order ₹{minOrderSubtotal} required. Add ₹{(minOrderSubtotal - totals.subtotal).toFixed(0)} more to checkout.
+            </p>
+          )}
+          {canCheckout && totals.delivery > 0 && amountToFreeDelivery > 0 && (
+            <p className="text-[11px] text-gray-500 mt-2 bg-gray-50 rounded-lg p-2 text-center">
+              Add ₹{amountToFreeDelivery.toFixed(0)} more for free delivery (orders ₹2000+)
+            </p>
+          )}
+          {canCheckout && totals.delivery === 0 && totals.subtotal > 0 && (
+            <p className="text-[11px] text-brand mt-2 bg-brand-light/30 rounded-lg p-2 text-center font-medium">
+              Free delivery on this order
             </p>
           )}
 
@@ -107,10 +118,15 @@ export default function Cart() {
           </div>
 
           <button
-            onClick={() => user ? navigate('/checkout') : navigate('/login')}
-            className="w-full btn-primary mt-4 py-3 flex items-center justify-center gap-2"
+            onClick={() => {
+              if (!user) return navigate('/login')
+              if (!canCheckout) return
+              navigate('/checkout')
+            }}
+            disabled={!!user && !canCheckout}
+            className="w-full btn-primary mt-4 py-3 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {user ? 'Proceed to Checkout' : 'Login to Checkout'}
+            {user ? (canCheckout ? 'Proceed to Checkout' : `Minimum ₹${minOrderSubtotal} to checkout`) : 'Login to Checkout'}
             <ArrowRight className="w-4 h-4" />
           </button>
 

@@ -25,7 +25,7 @@ export async function initiateRazorpayPayment({ amount, orderPayload, userInfo, 
       key:         rzpData.key_id,
       amount:      rzpData.amount,       // in paise
       currency:    rzpData.currency,
-      name:        'MathuraPharmeasy',
+      name:        'Bharat Medical',
       description: 'Online Pharmacy Order',
       image:       '/logo.png',
       order_id:    rzpData.razorpay_order_id,

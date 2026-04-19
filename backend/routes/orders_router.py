@@ -31,14 +31,14 @@ class OrderIn(BaseModel):
 
     Attributes:
         address_id: FK to the delivery address.
-        payment_method: One of ``upi``, ``card``, ``cod``, ``netbanking``.
-        payment_ref: Razorpay payment_id populated after successful online payment.
+        payment_method: Must be ``razorpay`` (online payment only).
+        payment_ref: Razorpay payment_id after successful payment.
         items: Non-empty list of ordered variants.
         prescription_urls: List of uploaded prescription image URLs.  Required
             (at least one element) when any ordered medicine has ``requires_rx=1``.
     """
     address_id: int
-    payment_method: str = "cod"
+    payment_method: str = "razorpay"
     payment_ref: str = ""
     items: List[OrderItem]
     prescription_urls: Optional[List[str]] = None
@@ -140,7 +140,20 @@ def place_order(body: OrderIn, background_tasks: BackgroundTasks, user=Depends(g
                 "Please upload a prescription and try again."
             )
 
-        delivery = 0.0 if subtotal >= 500 else 49.0
+        if subtotal < 500:
+            raise HTTPException(400, "Minimum order value is ₹500 (cart subtotal).")
+
+        pm = (body.payment_method or "").strip().lower()
+        if pm == "cod":
+            raise HTTPException(400, "Cash on delivery is not available. Pay online with Razorpay.")
+        if pm != "razorpay":
+            raise HTTPException(400, "Only Razorpay online payment is accepted.")
+
+        if not (body.payment_ref or "").strip():
+            raise HTTPException(400, "Complete payment with Razorpay before placing the order.")
+
+        # Free delivery at ₹2000+ subtotal; else ₹69
+        delivery = 0.0 if subtotal >= 2000 else 69.0
         discount = round(subtotal * 0.05) if subtotal >= 1000 else 0.0
         total    = subtotal + delivery - discount
 
@@ -150,8 +163,7 @@ def place_order(body: OrderIn, background_tasks: BackgroundTasks, user=Depends(g
         cur.execute("SELECT * FROM addresses WHERE id=%s AND user_id=%s", (body.address_id, uid))
         addr = cur.fetchone()
 
-        # payment_status: cod stays pending; razorpay marks paid after verify
-        pay_status = "paid" if body.payment_method != "cod" and body.payment_ref else "pending"
+        pay_status = "paid"
 
         cur.execute("""
             INSERT INTO orders (order_number,user_id,address_id,address_snapshot,status,

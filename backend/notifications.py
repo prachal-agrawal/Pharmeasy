@@ -191,6 +191,7 @@ def build_order_confirmation_email(
     pay_label_map = {
         "upi": "UPI Payment", "card": "Card Payment",
         "cod": "Cash on Delivery", "netbanking": "Net Banking",
+        "razorpay": "Razorpay",
     }
     pay_label = pay_label_map.get(payment_method, payment_method.title())
     is_cod = payment_method == "cod"

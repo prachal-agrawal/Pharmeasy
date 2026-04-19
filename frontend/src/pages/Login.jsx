@@ -25,7 +25,7 @@ export function Login() {
   return (
     <div className="min-h-[80vh] flex items-center justify-center px-4 page-enter">
       <div className="card p-8 w-full max-w-sm">
-        <div className="text-2xl font-extrabold text-brand mb-1">Mathura<span className="text-amber">Pharmeasy</span></div>
+        <div className="text-2xl font-extrabold text-brand mb-1">Bharat<span className="text-amber">Medical</span></div>
         <h2 className="font-bold text-lg mb-1">Welcome back</h2>
         <p className="text-sm text-gray-400 mb-6">Login to your account</p>
 
@@ -83,9 +83,9 @@ export function Register() {
   return (
     <div className="min-h-[80vh] flex items-center justify-center px-4 page-enter">
       <div className="card p-8 w-full max-w-sm">
-        <div className="text-2xl font-extrabold text-brand mb-1">Mathura<span className="text-amber">Pharmeasy</span></div>
+        <div className="text-2xl font-extrabold text-brand mb-1">Bharat<span className="text-amber">Medical</span></div>
         <h2 className="font-bold text-lg mb-1">Create Account</h2>
-        <p className="text-sm text-gray-400 mb-6">Join MathuraPharmeasy for faster checkout</p>
+        <p className="text-sm text-gray-400 mb-6">Join Bharat Medical for faster checkout</p>
 
         <form onSubmit={handle} className="space-y-4">
           {[

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react'
+import React, { useState, useEffect, useCallback, useRef } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { SlidersHorizontal, Loader2, CheckCircle, X, GitCompareArrows, Package, Truck } from 'lucide-react'
 import { medicinesAPI } from '../utils/api'
