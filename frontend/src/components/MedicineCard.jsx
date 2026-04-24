@@ -1,19 +1,29 @@
-import { Link } from 'react-router-dom'
-import { ShoppingCart, Star, GitCompareArrows } from 'lucide-react'
-import { useCart } from '../context/CartContext'
-import MedicineImage from './MedicineImage'
+import { Link } from "react-router-dom";
+import { ShoppingCart, Star, GitCompareArrows } from "lucide-react";
+import toast from "react-hot-toast";
+import { useCart } from "../context/CartContext";
+import MedicineImage from "./MedicineImage";
 
 export default function MedicineCard({ med, isCompared = false, onCompare }) {
-  const { addToCart } = useCart()
-  const hasStock = parseFloat(med.total_stock) > 0
+  const { addToCart } = useCart();
+  const hasStock = parseFloat(med.total_stock) > 0;
+  const variantId = med.default_variant_id != null ? Number(med.default_variant_id) : null;
 
   const handleAdd = async (e) => {
-    e.preventDefault()
-    await addToCart(null, 1, med.name)
-  }
+    e.preventDefault();
+    e.stopPropagation();
+    if (!variantId) {
+      toast.error("Open the product to choose a pack size.");
+      return;
+    }
+    await addToCart(variantId, 1, med.name);
+  };
 
   return (
-    <Link to={`/medicine/${med.id}`} className="card hover:border-brand hover:shadow-md transition-all duration-200 block group relative">
+    <Link
+      to={`/medicine/${med.id}`}
+      className="card hover:border-brand hover:shadow-md transition-all duration-200 block group relative"
+    >
       {/* Image */}
       <div className="relative">
         <MedicineImage
@@ -25,23 +35,27 @@ export default function MedicineCard({ med, isCompared = false, onCompare }) {
         />
 
         {/* Rx badge */}
-        <span className={`absolute top-2 right-2 ${med.requires_rx ? 'badge-rx' : 'badge-otc'}`}>
-          {med.requires_rx ? 'Rx' : 'OTC'}
+        <span className={`absolute top-2 right-2 ${med.requires_rx ? "badge-rx" : "badge-otc"}`}>
+          {med.requires_rx ? "Rx" : "OTC"}
         </span>
 
         {/* Compare toggle badge */}
         {onCompare && (
           <button
-            onClick={e => { e.preventDefault(); e.stopPropagation(); onCompare(med) }}
-            title={isCompared ? 'Remove from comparison' : 'Add to comparison'}
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              onCompare(med);
+            }}
+            title={isCompared ? "Remove from comparison" : "Add to comparison"}
             className={`absolute top-2 left-2 flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded-full border transition-all ${
               isCompared
-                ? 'bg-brand text-white border-brand shadow'
-                : 'bg-white/90 text-gray-500 border-gray-200 hover:border-brand hover:text-brand'
+                ? "bg-brand text-white border-brand shadow"
+                : "bg-white/90 text-gray-500 border-gray-200 hover:border-brand hover:text-brand"
             }`}
           >
             <GitCompareArrows className="w-3 h-3" />
-            {isCompared ? 'Added' : 'Compare'}
+            {isCompared ? "Added" : "Compare"}
           </button>
         )}
 
@@ -55,7 +69,9 @@ export default function MedicineCard({ med, isCompared = false, onCompare }) {
       {/* Body */}
       <div className="p-3">
         <p className="text-[11px] text-gray-400 mb-0.5">{med.category_name}</p>
-        <h3 className="font-bold text-sm leading-snug mb-0.5 group-hover:text-brand transition-colors line-clamp-2">{med.name}</h3>
+        <h3 className="font-bold text-sm leading-snug mb-0.5 group-hover:text-brand transition-colors line-clamp-2">
+          {med.name}
+        </h3>
         <p className="text-[11px] text-gray-500 mb-2">{med.brand}</p>
 
         {med.rating > 0 && (
@@ -84,7 +100,8 @@ export default function MedicineCard({ med, isCompared = false, onCompare }) {
           </div>
           {hasStock ? (
             <button
-              onClick={e => { e.preventDefault(); window.location.href=`/medicine/${med.id}` }}
+              type="button"
+              onClick={handleAdd}
               className="flex items-center gap-1 bg-brand-light text-brand text-xs font-bold px-2.5 py-1.5 rounded-md hover:bg-brand hover:text-white transition-colors"
             >
               <ShoppingCart className="w-3 h-3" /> Add
@@ -95,5 +112,5 @@ export default function MedicineCard({ med, isCompared = false, onCompare }) {
         </div>
       </div>
     </Link>
-  )
+  );
 }

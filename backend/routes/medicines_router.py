@@ -112,11 +112,18 @@ def list_medicines(
     Returns:
         list[dict]: Parsed medicine rows with aggregated pricing and stock.
     """
+    _VARIANT_PICK = """
+               (SELECT v2.id FROM medicine_variants v2
+                WHERE v2.medicine_id = m.id
+                ORDER BY (v2.stock > 0) DESC, v2.price ASC, v2.sort_order ASC, v2.id ASC
+                LIMIT 1) AS default_variant_id
+    """
     _BASE_SQL = """
         SELECT m.*, c.name AS category_name,
                MIN(v.price) AS min_price, MAX(v.price) AS max_price,
                MIN(v.mrp)   AS min_mrp,
-               COALESCE(SUM(v.stock), 0) AS total_stock
+               COALESCE(SUM(v.stock), 0) AS total_stock,
+    """ + _VARIANT_PICK + """
         FROM medicines m
         JOIN categories c ON m.category_id = c.id
         LEFT JOIN medicine_variants v ON v.medicine_id = m.id
@@ -185,11 +192,15 @@ def list_medicines(
 
     secondary = _SORT_SECONDARY.get(sort, _default_secondary)
 
+    _def_var = (
+        "(SELECT v2.id FROM medicine_variants v2 WHERE v2.medicine_id = m.id "
+        "ORDER BY (v2.stock > 0) DESC, v2.price ASC, v2.sort_order ASC, v2.id ASC LIMIT 1) AS default_variant_id"
+    )
     sql1 = (
         f"SELECT m.*, c.name AS category_name, "
         f"MIN(v.price) AS min_price, MAX(v.price) AS max_price, "
         f"MIN(v.mrp) AS min_mrp, COALESCE(SUM(v.stock), 0) AS total_stock, "
-        f"{priority_case} "
+        f"{_def_var}, {priority_case} "
         f"FROM medicines m "
         f"JOIN categories c ON m.category_id = c.id "
         f"LEFT JOIN medicine_variants v ON v.medicine_id = m.id "
@@ -223,7 +234,11 @@ def _fetch_medicine_cards(ids: list[int]) -> list[dict]:
         rows = db.fetchall(
             f"""SELECT m.*, c.name AS category_name,
                        MIN(v.price) AS min_price, MIN(v.mrp) AS min_mrp,
-                       COALESCE(SUM(v.stock), 0) AS total_stock
+                       COALESCE(SUM(v.stock), 0) AS total_stock,
+                       (SELECT v2.id FROM medicine_variants v2
+                        WHERE v2.medicine_id = m.id
+                        ORDER BY (v2.stock > 0) DESC, v2.price ASC, v2.sort_order ASC, v2.id ASC
+                        LIMIT 1) AS default_variant_id
                 FROM medicines m
                 JOIN categories c ON c.id = m.category_id
                 LEFT JOIN medicine_variants v ON v.medicine_id = m.id
@@ -282,7 +297,11 @@ async def fetch_online_medicine(body: FetchOnlineRequest):
         local_rows = db.fetchall(
             """SELECT m.*, c.name AS category_name,
                       MIN(v.price) AS min_price, MIN(v.mrp) AS min_mrp,
-                      COALESCE(SUM(v.stock), 0) AS total_stock
+                      COALESCE(SUM(v.stock), 0) AS total_stock,
+                      (SELECT v2.id FROM medicine_variants v2
+                       WHERE v2.medicine_id = m.id
+                       ORDER BY (v2.stock > 0) DESC, v2.price ASC, v2.sort_order ASC, v2.id ASC
+                       LIMIT 1) AS default_variant_id
                FROM medicines m
                JOIN categories c ON c.id = m.category_id
                LEFT JOIN medicine_variants v ON v.medicine_id = m.id

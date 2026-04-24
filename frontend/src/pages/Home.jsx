@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { useSearchParams, useLocation } from 'react-router-dom'
 import { SlidersHorizontal, Loader2, CheckCircle, X, GitCompareArrows, Package, Truck } from 'lucide-react'
 import { medicinesAPI } from '../utils/api'
 import MedicineCard from '../components/MedicineCard'
 import MedicineImage from '../components/MedicineImage'
 import DeliveryEstimateWidget from '../components/DeliveryEstimateWidget'
+import HomePromoCarousel from '../components/HomePromoCarousel'
 import toast from 'react-hot-toast'
 import { useAuth } from '../context/AuthContext'
 
@@ -12,6 +13,7 @@ export default function Home() {
   const { user }                           = useAuth()
   const displayName                        = user?.name || 'Guest'
   const [searchParams]                     = useSearchParams()
+  const location                           = useLocation()
   // Catalog search comes only from the navbar via ?search= (single source of truth)
   const committedSearch                    = (searchParams.get('search') || '').trim()
   const [meds,         setMeds]            = useState([])
@@ -129,23 +131,38 @@ export default function Home() {
   useEffect(() => { fetchCats() }, [])
   useEffect(() => { fetchMeds() }, [fetchMeds])
 
+  // Scroll to in-page target when URL hash changes (e.g. promo CTAs: /#home-catalog)
+  useEffect(() => {
+    const id = (location.hash || '').replace('#', '')
+    if (!id) return
+    const el = document.getElementById(id)
+    if (!el) return
+    const t = requestAnimationFrame(() => {
+      el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    })
+    return () => cancelAnimationFrame(t)
+  }, [location.hash, location.pathname])
+
   return (
     <div className="max-w-7xl mx-auto px-4 py-6 page-enter">
-      {/* Hero */}
-      <div className="bg-brand rounded-2xl px-6 py-8 mb-6 text-white relative overflow-hidden">
-        <div className="absolute right-0 top-0 w-48 h-full opacity-10 text-[120px] flex items-center">💊</div>
-        <h1 className="text-2xl font-extrabold mb-1">Your trusted online pharmacy</h1>
-        <p className="text-brand-light text-sm">Genuine medicines · Fast delivery · Expert advice</p>
-        {/* <p className="text-brand-light/90 text-xs mt-3">Use the search bar above to find medicines.</p> */}
-      </div>
+      <HomePromoCarousel />
 
       {/* Delivery Pincode Checker */}
-      <div className="card p-5 mb-5">
+      <div id="home-delivery-check" className="card p-5 mb-5 scroll-mt-24">
         <div className="flex items-center gap-2 mb-3">
           <Truck className="w-4 h-4 text-brand" />
           <h2 className="font-bold text-sm text-gray-700">Check Delivery to Your Location</h2>
         </div>
         <DeliveryEstimateWidget />
+      </div>
+
+      <div id="home-how-rx" className="card p-5 mb-5 scroll-mt-24">
+        <h2 className="font-bold text-sm text-gray-700 mb-2">How prescriptions work</h2>
+        <ol className="text-sm text-gray-600 space-y-1.5 list-decimal list-inside max-w-2xl">
+          <li>Add items to your cart. Some require a valid prescription (Rx).</li>
+          <li>At checkout, upload a clear photo or PDF of your doctor&apos;s prescription.</li>
+          <li>We verify it quickly, then process and deliver your order.</li>
+        </ol>
       </div>
 
       {/* Below-hero: two-column layout — Comparison panel (left) + main content (right) */}
@@ -155,7 +172,7 @@ export default function Home() {
         <ComparisonPanel compareList={compareList} onRemove={toggleCompare} onClear={() => setCompareList([])} />
 
         {/* ── Right: Category pills + Sort + Grid ── */}
-        <div className="flex-1 min-w-0">
+        <div id="home-catalog" className="flex-1 min-w-0 scroll-mt-24">
           {/* Category pills */}
           <div className="flex gap-2 flex-wrap mb-4">
             <Pill active={!activeCat} onClick={() => setActiveCat('')}>All</Pill>
